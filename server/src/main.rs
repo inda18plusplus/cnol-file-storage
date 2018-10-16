@@ -9,21 +9,29 @@ use rocket::{
     response::status::Custom as CustomStatus
 };
 
-use std::sync::*;
+use std::sync::{
+    Arc,
+    RwLock
+};
 use std::collections::HashMap;
 
 mod file_cache;
-use file_cache::FileCache;
+use file_cache::{
+    FileCache,
+    FileID
+};
+
 type Files = Arc<RwLock<FileCache>>;
 
+
 #[get("/<file>")]
-fn get_file(files: State<Files>, file: usize) -> Option<Vec<u8>> {
+fn get_file(files: State<Files>, file: FileID) -> Option<Vec<u8>> {
     files.read().unwrap()
         .get(file)
 }
 
 #[put("/<file>", data="<data>")]
-fn upload_file(files: State<Files>, file: usize, data: Vec<u8>) -> CustomStatus<()> {
+fn upload_file(files: State<Files>, file: FileID, data: Vec<u8>) -> CustomStatus<()> {
     match files.write().unwrap()
         .insert(file, data) {
         Some(_) => CustomStatus(Status::Ok, ()),
@@ -32,11 +40,7 @@ fn upload_file(files: State<Files>, file: usize, data: Vec<u8>) -> CustomStatus<
 }
 
 fn main() {
-    let mut files = FileCache::new();
-    files.insert(0, b"Random text on a server".to_vec());
-    files.insert(1, b"Rocket!".to_vec());
-
-    let files: Files = Arc::new(RwLock::new(files));
+    let files: Files = Arc::new(RwLock::new(FileCache::new()));
 
     rocket::ignite()
         .manage(files)

@@ -5,3 +5,5 @@ authors = ["Christofer Nolander <christofer.nolander@gmail.com>"]
 
 [dependencies]
 reqwest = "0.9.2"
+ring = "0.13.2"
+

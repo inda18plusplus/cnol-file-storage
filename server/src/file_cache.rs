@@ -1,7 +1,7 @@
 
 use std::collections::HashMap;
 
-type FileID = usize;
+pub type FileID = u32;
 
 pub struct FileCache {
     files: HashMap<FileID, Vec<u8>>
