@@ -3,6 +3,13 @@ name = "server"
 version = "0.1.0"
 authors = ["Christofer Nolander <christofer.nolander@gmail.com>"]
 
+[[bin]]
+name = "server"
+path = "src/server.rs"
+
 [dependencies]
 rocket = "0.3.17"
 rocket_codegen = "0.3.17"
+
+file_hash = { path = "../file_hash" }
+

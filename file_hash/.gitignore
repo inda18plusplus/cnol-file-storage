@@ -2,6 +2,3 @@
 Cargo.lock
 target/
 *.iml
-
-get
-put

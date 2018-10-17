@@ -12,7 +12,7 @@ use std::io::Read;
 mod secret;
 use secret::Secret;
 
-type FileID = u32;
+type FileID = u16;
 
 
 fn main() {
@@ -36,7 +36,7 @@ fn main() {
 }
 
 
-fn serialize_file_id(id: FileID) -> [u8; 4] {
+fn serialize_file_id(id: FileID) -> [u8; 2] {
     use std::mem::transmute;
     unsafe { transmute(id.to_be()) }
 }
