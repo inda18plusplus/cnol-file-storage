@@ -6,14 +6,14 @@ use ring::{
         OpeningKey,
         AES_128_GCM,
         seal_in_place,
-        open_in_place
+        open_in_place,
     },
     rand::{
         SystemRandom,
-        SecureRandom
+        SecureRandom,
     },
     pbkdf2::derive,
-    digest::SHA256
+    digest::SHA256,
 };
 
 static ALGORITHM: &'static ring::aead::Algorithm = &AES_128_GCM;
@@ -22,7 +22,7 @@ static ALGORITHM: &'static ring::aead::Algorithm = &AES_128_GCM;
 /// Stores encrypted data
 pub struct Secret {
     data: Vec<u8>,
-    nonce: Vec<u8>
+    nonce: Vec<u8>,
 }
 
 #[derive(Debug)]
@@ -44,7 +44,7 @@ impl Secret {
 
         Secret {
             data,
-            nonce
+            nonce,
         }
     }
 
@@ -58,10 +58,9 @@ impl Secret {
 
             Ok(Secret {
                 data: data.to_vec(),
-                nonce: nonce.to_vec()
+                nonce: nonce.to_vec(),
             })
         }
-
     }
 
 
@@ -80,15 +79,16 @@ impl Secret {
         match decrypt(&key, &self.nonce, &self.data, verification) {
             Ok(data) => {
                 Ok(data)
-            },
+            }
             Err(_) => {
                 Err(Error::AuthenticationFailed)
-            },
+            }
         }
     }
 }
 
 
+/// Generate a private key from a password
 fn generate_key(password: &[u8]) -> Vec<u8> {
     let salt = [0, 1, 2, 3, 4, 5, 6, 7];
     let mut hashed_password = vec![0; ALGORITHM.key_len()];
@@ -97,16 +97,19 @@ fn generate_key(password: &[u8]) -> Vec<u8> {
     hashed_password
 }
 
+/// Generate a nonce for encryption/decryption
 fn generate_nonce() -> Vec<u8> {
     let mut nonce = vec![0; ALGORITHM.nonce_len()];
     SystemRandom::new().fill(&mut nonce).unwrap();
     nonce
 }
 
+/// Encrypt and sign some data using a private key, a nonce, and an unique identifier for
+/// verification.
 fn encrypt(key: &[u8], nonce: &[u8], data: &[u8], verification_data: &[u8]) -> Result<Vec<u8>, Unspecified> {
     let key = SealingKey::new(
         ALGORITHM,
-        &key
+        &key,
     ).unwrap();
 
     // Allocate space for tag
@@ -120,10 +123,12 @@ fn encrypt(key: &[u8], nonce: &[u8], data: &[u8], verification_data: &[u8]) -> R
         .map(|_| buffer)
 }
 
+/// Verify and decrypt some data using a private key, a nonce, and an unique identifier for
+/// verifying the authenticity of the data.
 fn decrypt(key: &[u8], nonce: &[u8], ciphertext: &[u8], verification_data: &[u8]) -> Result<Vec<u8>, Unspecified> {
     let key = OpeningKey::new(
         ALGORITHM,
-        &key
+        &key,
     ).unwrap();
 
     let mut buffer = ciphertext.to_vec();

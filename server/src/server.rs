@@ -15,7 +15,6 @@ use std::sync::{
     Arc,
     RwLock
 };
-use std::collections::HashMap;
 
 mod file_cache;
 use file_cache::{
@@ -42,19 +41,24 @@ fn upload_file(files: State<Files>, file: FileID, data: Vec<u8>) -> CustomStatus
     }
 }
 
-#[get("/")]
+#[get("/verify/root")]
 fn get_root_hash(files: State<Files>) -> Vec<u8> {
     files.read().unwrap()
         .root_hash()
 }
 
+#[get("/verify/<file>")]
+fn get_dependencies(files: State<Files>, file: FileID) -> Option<Vec<u8>> {
+    files.read().unwrap()
+        .hash_dependencies(file)
+}
 
 fn main() {
     let files: Files = Arc::new(RwLock::new(FileCache::new()));
 
     rocket::ignite()
         .manage(files)
-        .mount("/file", routes![get_file, upload_file, get_root_hash])
+        .mount("/file", routes![get_file, upload_file, get_root_hash, get_dependencies])
         .launch();
 }
 

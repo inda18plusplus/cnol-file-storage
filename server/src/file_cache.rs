@@ -1,5 +1,8 @@
 
-use file_hash::MerkleTree;
+use file_hash::{
+    MerkleTree,
+    hash
+};
 
 use std::collections::HashMap;
 
@@ -16,13 +19,16 @@ impl FileCache {
 
         FileCache {
             files: HashMap::new(),
-            hashes: MerkleTree::new(size_of::<FileID>() as u8)
+            hashes: MerkleTree::new(size_of::<FileID>() as u8 * 8)
         }
     }
 
 
-    pub fn insert(&mut self, id: FileID, file: Vec<u8>) -> Option<Vec<u8>> {
-        self.files.insert(id, file)
+    pub fn insert(&mut self, file: FileID, data: Vec<u8>) -> Option<Vec<u8>> {
+        let hash = hash(&data);
+        self.hashes.insert(file as usize, hash).unwrap();
+
+        self.files.insert(file, data)
     }
 
 
@@ -32,6 +38,22 @@ impl FileCache {
 
 
     pub fn root_hash(&self) -> Vec<u8> {
-        Vec::new()
+        self.hashes.root().into_vec()
+    }
+
+    /// Return a list of 32 byte hashes
+    pub fn hash_dependencies(&self, file: FileID) -> Option<Vec<u8>> {
+        match self.hashes.dependencies(file as usize) {
+            Ok(dependencies) => {
+                let deps = dependencies.into_iter()
+                    .map(|hash| hash.into_vec())
+                    .flatten()
+                    .collect();
+
+                Some(deps)
+            }
+
+            Err(_) => None
+        }
     }
 }
