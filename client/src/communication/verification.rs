@@ -1,6 +1,5 @@
 
 use reqwest::{
-    self,
     Client,
 };
 
@@ -67,7 +66,7 @@ const ROOT_HASH_PATH: &'static str = "root_hash";
 
 /// Verify that a file has not been modified. Returns `Ok` if that's the case, `Err` otherwise
 pub fn verify_file(client: &Client, file: FileID, data: &[u8]) -> Result<()> {
-    let client_root_hash = get_client_root_hash()?;
+    let client_root_hash = get_client_root_hash(client)?;
 
     verify_root_hashes(client, client_root_hash.clone())?;
 
@@ -97,7 +96,7 @@ pub fn update_root_hash(client: &Client, client_root_hash: Hash) -> Result<()> {
 
 /// Compute a new root hash based on a files location and it's expected data
 pub fn compute_new_root_hash(client: &Client, file: FileID, data: &[u8]) -> Result<Hash> {
-    let client_root_hash = get_client_root_hash()?;
+    let client_root_hash = get_client_root_hash(client)?; 
     verify_root_hashes(client, client_root_hash)?;
 
     let dependencies = get_file_dependencies(client, file)?;
@@ -157,8 +156,10 @@ fn get_server_root_hash(client: &Client) -> Result<Hash> {
     }
 }
 
-/// Attempts to load the client's root hash
-fn get_client_root_hash() -> Result<Hash> {
+/// Attempts to load the client's root hash.
+/// If the client does not have a root hash 
+/// a new one be downloaded from the server.
+fn get_client_root_hash(client: &Client) -> Result<Hash> {
     match File::open(ROOT_HASH_PATH) {
         Ok(mut file) => {
             let mut hash = Hash::default();
@@ -169,9 +170,21 @@ fn get_client_root_hash() -> Result<Hash> {
             }
         },
 
-        Err(e) => Err(Error::ClientHashNotFound(e)),
+        Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
+            initialize_client_hash(client)
+        },
+
+        Err(e) => Err(Error::ClientHashNotFound(e))
     }
 }
+
+/// Downloads the root hash of the server and saves it to the client
+fn initialize_client_hash(client: &Client) -> Result<Hash> {
+    let hash = get_server_root_hash(client)?;
+    save_client_root_hash(hash.clone())?;
+    Ok(hash)
+}
+
 
 /// Attempts to save the client's root hash
 fn save_client_root_hash(hash: Hash) -> Result<()> {

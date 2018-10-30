@@ -12,12 +12,13 @@ use ring::{
         SystemRandom,
         SecureRandom,
     },
-    pbkdf2::derive,
-    digest::SHA256,
+    pbkdf2,
+    digest,
 };
 
-static ALGORITHM: &'static ring::aead::Algorithm = &AES_128_GCM;
-
+static ENCRYPTION_ALGORITHM: &'static ring::aead::Algorithm = &AES_128_GCM;
+static KEY_DIGEST_ALGORITM: &'static digest::Algorithm = &digest::SHA256;
+static PBKDF2_ITERATIONS: u32 = 47_131;
 
 /// Stores encrypted data
 pub struct Secret {
@@ -51,10 +52,10 @@ impl Secret {
 
     /// Create a new secret from some bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Secret, Error> {
-        if bytes.len() < ALGORITHM.nonce_len() {
+        if bytes.len() < ENCRYPTION_ALGORITHM.nonce_len() {
             Err(Error::InvalidLength)
         } else {
-            let (data, nonce) = bytes.split_at(bytes.len() - ALGORITHM.nonce_len());
+            let (data, nonce) = bytes.split_at(bytes.len() - ENCRYPTION_ALGORITHM.nonce_len());
 
             Ok(Secret {
                 data: data.to_vec(),
@@ -62,7 +63,6 @@ impl Secret {
             })
         }
     }
-
 
     /// Get the secret as bytes
     pub fn as_bytes(&self) -> Vec<u8> {
@@ -91,15 +91,16 @@ impl Secret {
 /// Generate a private key from a password
 fn generate_key(password: &[u8]) -> Vec<u8> {
     let salt = [0, 1, 2, 3, 4, 5, 6, 7];
-    let mut hashed_password = vec![0; ALGORITHM.key_len()];
-    derive(&SHA256, 100, &salt, &password[..], &mut hashed_password);
+    let mut hashed_password = vec![0; ENCRYPTION_ALGORITHM.key_len()];
+
+    pbkdf2::derive(KEY_DIGEST_ALGORITM, PBKDF2_ITERATIONS, &salt, password, &mut hashed_password);
 
     hashed_password
 }
 
 /// Generate a nonce for encryption/decryption
 fn generate_nonce() -> Vec<u8> {
-    let mut nonce = vec![0; ALGORITHM.nonce_len()];
+    let mut nonce = vec![0; ENCRYPTION_ALGORITHM.nonce_len()];
     SystemRandom::new().fill(&mut nonce).unwrap();
     nonce
 }
@@ -108,7 +109,7 @@ fn generate_nonce() -> Vec<u8> {
 /// verification.
 fn encrypt(key: &[u8], nonce: &[u8], data: &[u8], verification_data: &[u8]) -> Result<Vec<u8>, Unspecified> {
     let key = SealingKey::new(
-        ALGORITHM,
+        ENCRYPTION_ALGORITHM,
         &key,
     ).unwrap();
 
@@ -119,7 +120,7 @@ fn encrypt(key: &[u8], nonce: &[u8], data: &[u8], verification_data: &[u8]) -> R
     }
 
     // Encrypt and sign
-    seal_in_place(&key, nonce, verification_data, &mut buffer, ALGORITHM.tag_len())
+    seal_in_place(&key, nonce, verification_data, &mut buffer, ENCRYPTION_ALGORITHM.tag_len())
         .map(|_| buffer)
 }
 
@@ -127,7 +128,7 @@ fn encrypt(key: &[u8], nonce: &[u8], data: &[u8], verification_data: &[u8]) -> R
 /// verifying the authenticity of the data.
 fn decrypt(key: &[u8], nonce: &[u8], ciphertext: &[u8], verification_data: &[u8]) -> Result<Vec<u8>, Unspecified> {
     let key = OpeningKey::new(
-        ALGORITHM,
+        ENCRYPTION_ALGORITHM,
         &key,
     ).unwrap();
 
