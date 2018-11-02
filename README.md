@@ -24,7 +24,7 @@ Sends basic requests to the server, such as storing a new file or downloading a 
 Files are hashed using SHA256 digest since it is inexpensive to compute. 
 
 ### Signing and Encryption/Decryption 
-Files are signed, encrypted and decrypted using an AEAD, the AES 128 GCM algorithm, using a key derived from a user supplied password using PBKDF2 with SHA256. 
+Files are signed, encrypted and decrypted using an AEAD, the AES 128 GCM algorithm, with a key derived from a user supplied password using PBKDF2 with SHA256. 
 
 PBKDF2 is used because SHA256 is computationally inexpensive. As such, it makes the encryption vulnerable to dictionary attacks. By iterating PBKDF2 a couple thousand times the cost of computing a key is increased, thus increasing the time it takes to brute-force a password. 
 
